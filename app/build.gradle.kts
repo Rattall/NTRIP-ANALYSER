@@ -42,13 +42,15 @@ android {
     }
 }
 
-configurations.configureEach {
-    if (name == "debugRuntimeClasspathCopy") {
-        isCanBeConsumed = false
-        isCanBeResolved = true
-        @Suppress("UnstableApiUsage")
-        isCanBeDeclared = false
-    }
+afterEvaluate {
+    configurations
+        .matching { it.name.endsWith("RuntimeClasspathCopy") }
+        .configureEach {
+            isCanBeConsumed = false
+            isCanBeResolved = true
+            @Suppress("UnstableApiUsage")
+            isCanBeDeclared = false
+        }
 }
 
 dependencies {
