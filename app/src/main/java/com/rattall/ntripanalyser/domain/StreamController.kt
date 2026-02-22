@@ -158,12 +158,12 @@ class StreamController(
                 delay(delayMs)
             }
 
+            val finalStatus = if (lastError != null && reconnectAttempts >= reconnectPolicy.maxAttempts) {
+                "Disconnected after retries: $lastError"
+            } else {
+                "Disconnected"
+            }
             withContext(Dispatchers.Main) {
-                val finalStatus = if (lastError != null && reconnectAttempts >= reconnectPolicy.maxAttempts) {
-                    "Disconnected after retries: $lastError"
-                } else {
-                    "Disconnected"
-                }
                 _stats.value = _stats.value.copy(
                     connected = false,
                     statusMessage = finalStatus,
