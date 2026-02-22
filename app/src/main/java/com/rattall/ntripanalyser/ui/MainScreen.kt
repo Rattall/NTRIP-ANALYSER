@@ -1,6 +1,7 @@
 package com.rattall.ntripanalyser.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -30,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -304,10 +306,93 @@ private fun MessageDetailBlock(summary: RtcmTypeSummary) {
         summary.lastFields
             .toSortedMap()
             .forEach { (key, value) ->
-                val rendered = renderFieldValue(value)
-                Text("$key: $rendered", style = MaterialTheme.typography.bodySmall)
+                val listOfMaps = value.asListOfMaps()
+                if (listOfMaps != null) {
+                    Text(key, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                    DetailDataTable(rows = listOfMaps)
+                } else {
+                    val rendered = renderFieldValue(value)
+                    Text("$key: $rendered", style = MaterialTheme.typography.bodySmall)
+                }
             }
     }
+}
+
+@Composable
+private fun DetailDataTable(rows: List<Map<String, Any?>>) {
+    if (rows.isEmpty()) {
+        Text("(empty)", style = MaterialTheme.typography.bodySmall)
+        return
+    }
+
+    val preferred = listOf(
+        "satelliteId",
+        "signalId",
+        "index",
+        "roughRangeMs",
+        "rangeModulo_1_1024ms",
+        "finePseudorange",
+        "finePhaseRange",
+        "cnr",
+        "lockTimeIndicator"
+    )
+
+    val allColumns = rows
+        .flatMap { it.keys }
+        .distinct()
+        .sortedWith(compareBy<String>({ preferred.indexOf(it).let { idx -> if (idx == -1) Int.MAX_VALUE else idx } }, { it }))
+
+    val scroll = rememberScrollState()
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(scroll),
+        tonalElevation = 1.dp,
+        shape = MaterialTheme.shapes.small
+    ) {
+        Column(modifier = Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                allColumns.forEach { column ->
+                    Text(
+                        text = column,
+                        modifier = Modifier.width(120.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            HorizontalDivider()
+            rows.forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    allColumns.forEach { column ->
+                        Text(
+                            text = renderNestedValue(row[column]),
+                            modifier = Modifier.width(120.dp),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun Any?.asListOfMaps(): List<Map<String, Any?>>? {
+    if (this !is List<*>) {
+        return null
+    }
+    if (this.isEmpty()) {
+        return emptyList()
+    }
+
+    val converted = mutableListOf<Map<String, Any?>>()
+    for (item in this) {
+        if (item !is Map<*, *>) {
+            return null
+        }
+        converted += item.entries.associate { (k, v) -> k.toString() to v }
+    }
+    return converted
 }
 
 private fun renderFieldValue(value: Any?): String {
