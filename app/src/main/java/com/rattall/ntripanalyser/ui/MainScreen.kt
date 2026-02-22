@@ -16,113 +16,98 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CenterAlignedTopAppBar
+    val hiddenKeys = setOf("messageType", "stationId", "satelliteCount")
+
+    val tableFields = summary.lastFields
+        .toSortedMap()
+        .mapNotNull { (key, value) ->
+            val rows = value.asListOfMaps() ?: return@mapNotNull null
+            key to rows
+        }
+
+    val scalarFields = summary.lastFields
+        .toSortedMap()
+        .filter { (key, value) -> key !in hiddenKeys && value.asListOfMaps() == null }
+
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+        verticalArrangement = Arrangement.spacedBy(8.dp)
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.remember
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.ui.Modifier
+        scalarFields.forEach { (key, value) ->
+            StatRow(label = key, value = renderFieldValue(value))
+        }
+
+        tableFields.forEach { (key, rows) ->
+            Text(
+                text = tableTitle(key),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            val discoveredColumns = rows.flatMap { it.keys }.distinct()
+            val columns = orderedColumnsForField(
+                messageType = summary.messageType,
+                fieldKey = key,
+                discoveredColumns = discoveredColumns
+            )
+            DetailDataTable(rows = rows, columns = columns)
+        }
+
+        if (scalarFields.isEmpty() && tableFields.isEmpty()) {
+            Text("No parsed detail fields", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
+private fun DetailDataTable(rows: List<Map<String, Any?>>, columns: List<String>) {
+    if (rows.isEmpty()) {
+        Text("(empty)", style = MaterialTheme.typography.bodySmall)
+        return
+    }
+
+    val allColumns = if (columns.isEmpty()) {
+        rows.flatMap { it.keys }.distinct().sorted()
+    } else {
+        columns
+    }
+
+    val scroll = rememberScrollState()
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(scroll),
+        tonalElevation = 1.dp,
+        shape = MaterialTheme.shapes.small
+    ) {
+        Column(modifier = Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                allColumns.forEach { column ->
+                    Text(
+                        text = column,
+                        modifier = Modifier.width(120.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            HorizontalDivider()
+            rows.forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    allColumns.forEach { column ->
+                        Text(
+                            text = renderNestedValue(row[column]),
+                            modifier = Modifier.width(120.dp),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rattall.ntripanalyser.model.NtripProtocol
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MainScreen(viewModel: MainViewModel) {
-    val ui by viewModel.uiState.collectAsStateWithLifecycle()
-    val stats by viewModel.stats.collectAsStateWithLifecycle()
-    val expandedByType = remember { mutableStateMapOf<Int, Boolean>() }
-
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                        Text("NTRIP RTCM3 Analyser", style = MaterialTheme.typography.titleLarge)
-                        Text(ui.status, style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            item {
-                SectionCard(title = "Connection") {
-                    OutlinedTextField(
-                        value = ui.host,
-                        onValueChange = viewModel::setHost,
-                        label = { Text("Caster Host") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = ui.port,
-                        onValueChange = viewModel::setPort,
-                        label = { Text("Port") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = ui.username,
-                        onValueChange = viewModel::setUsername,
-                        label = { Text("Username") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = ui.password,
-                        onValueChange = viewModel::setPassword,
-                        label = { Text("Password") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                    ) {
-                        Text("Use TLS", style = MaterialTheme.typography.bodyMedium)
-                        Checkbox(checked = ui.useTls, onCheckedChange = viewModel::setUseTls)
-                    }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected = ui.protocol == NtripProtocol.REV1,
-                            onClick = { viewModel.setProtocol(NtripProtocol.REV1) },
-                            label = { Text("NTRIP Rev1") }
-                        )
-                        FilterChip(
-                            selected = ui.protocol == NtripProtocol.REV2,
-                            onClick = { viewModel.setProtocol(NtripProtocol.REV2) },
-                            label = { Text("NTRIP Rev2") }
-                        )
-                    }
-
-                    Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -331,17 +316,43 @@ private fun DetailDataTable(rows: List<Map<String, Any?>>) {
         "index",
         "roughRangeMs",
         "rangeModulo_1_1024ms",
-        "finePseudorange",
-        "finePhaseRange",
-        "cnr",
-        "lockTimeIndicator"
+    val hiddenKeys = setOf(
+        "messageType",
+        "stationId",
+        "satelliteCount"
     )
 
-    val allColumns = rows
-        .flatMap { it.keys }
-        .distinct()
-        .sortedWith(compareBy<String>({ preferred.indexOf(it).let { idx -> if (idx == -1) Int.MAX_VALUE else idx } }, { it }))
+    val tableFields = summary.lastFields
+        .toSortedMap()
+        .mapNotNull { (key, value) ->
+            val rows = value.asListOfMaps() ?: return@mapNotNull null
+            key to rows
+        }
 
+    val scalarFields = summary.lastFields
+        .toSortedMap()
+        .filter { (key, value) ->
+            key !in hiddenKeys && value.asListOfMaps() == null
+        }
+
+        if (scalarFields.isNotEmpty()) {
+            scalarFields.forEach { (key, value) ->
+                StatRow(label = key, value = renderFieldValue(value))
+            }
+        }
+
+        tableFields.forEach { (key, rows) ->
+            Text(
+                text = tableTitle(key),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            DetailDataTable(rows = rows)
+        }
+
+        if (scalarFields.isEmpty() && tableFields.isEmpty()) {
+            Text("No parsed detail fields", style = MaterialTheme.typography.bodySmall)
+        }
     val scroll = rememberScrollState()
     Surface(
         modifier = Modifier
@@ -395,6 +406,55 @@ private fun Any?.asListOfMaps(): List<Map<String, Any?>>? {
     return converted
 }
 
+private fun tableTitle(key: String): String {
+    return when (key) {
+        "cellData" -> "Cell Data"
+        "satelliteData" -> "Satellite Data"
+        "satellites" -> "Satellites"
+        else -> key
+    }
+}
+
+private fun orderedColumnsForField(
+    messageType: Int,
+    fieldKey: String,
+    discoveredColumns: List<String>
+): List<String> {
+    val preferred = when {
+        fieldKey == "satellites" && messageType == 1004 -> listOf(
+            "index", "satelliteId", "l1Code", "l1Pseudorange", "l1PhaseRangeMinusPseudorange",
+            "l1LockTimeIndicator", "integerL1PseudorangeModulus", "l1Cn0", "l2Code",
+            "l2MinusL1Pseudorange", "l2MinusL1PhaseRange", "l2LockTimeIndicator", "l2Cn0"
+        )
+
+        fieldKey == "satellites" && messageType == 1012 -> listOf(
+            "index", "satelliteId", "frequencyChannelNumber", "l1Code", "l1Pseudorange",
+            "l1PhaseRangeMinusPseudorange", "l1LockTimeIndicator", "integerL1PseudorangeModulus",
+            "l1Cn0", "l2Code", "l2MinusL1Pseudorange", "l2MinusL1PhaseRange",
+            "l2LockTimeIndicator", "l2Cn0"
+        )
+
+        fieldKey == "satelliteData" -> listOf(
+            "satelliteId", "roughRangeMs", "extendedInfo", "rangeModulo_1_1024ms", "roughPhaseRangeRate"
+        )
+
+        fieldKey == "cellData" -> listOf(
+            "satelliteId", "signalId", "finePseudorange", "finePhaseRange", "lockTimeIndicator",
+            "halfCycleAmbiguity", "cnr", "finePhaseRangeRate"
+        )
+
+        else -> listOf("index", "satelliteId", "signalId")
+    }
+
+    val preferredRank = preferred.withIndex().associate { it.value to it.index }
+    return discoveredColumns.sortedWith(
+        compareBy<String>(
+            { preferredRank[it] ?: Int.MAX_VALUE },
+            { it }
+        )
+    )
+}
+
 private fun renderFieldValue(value: Any?): String {
     return when (value) {
         null -> "null"
@@ -402,32 +462,18 @@ private fun renderFieldValue(value: Any?): String {
             if (value.isEmpty()) {
                 "[]"
             } else {
-                buildString {
-                    append("list(size=${value.size})")
-                    value.forEachIndexed { index, item ->
-                        append("\n  [")
-                        append(index)
-                        append("] ")
-                        append(renderNestedValue(item))
-                    }
-                }
+                "[${value.joinToString(", ") { renderNestedValue(it) }}]"
             }
         }
         is Map<*, *> -> {
             if (value.isEmpty()) {
                 "{}"
             } else {
-                buildString {
-                    append("map(size=${value.size})")
-                    value.entries
-                        .sortedBy { it.key?.toString().orEmpty() }
-                        .forEach { (key, item) ->
-                            append("\n  ")
-                            append(key)
-                            append("=")
-                            append(renderNestedValue(item))
-                        }
-                }
+                value.entries
+                    .sortedBy { it.key?.toString().orEmpty() }
+                    .joinToString(prefix = "{", postfix = "}") { (key, item) ->
+                        "${key}=${renderNestedValue(item)}"
+                    }
             }
         }
         else -> value.toString()
