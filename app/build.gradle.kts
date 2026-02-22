@@ -42,12 +42,14 @@ android {
     }
 }
 
-configurations
-    .matching { it.name.endsWith("RuntimeClasspathCopy") }
-    .configureEach {
-        isCanBeConsumed = false
-        isCanBeResolved = true
-    }
+afterEvaluate {
+    configurations
+        .matching { it.name.endsWith("RuntimeClasspathCopy") }
+        .all {
+            isCanBeConsumed = false
+            isCanBeResolved = true
+        }
+}
 
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
