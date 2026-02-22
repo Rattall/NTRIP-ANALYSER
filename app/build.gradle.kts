@@ -4,6 +4,11 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+configurations.maybeCreate("debugRuntimeClasspathCopy").apply {
+    isCanBeResolved = true
+    isCanBeConsumed = false
+}
+
 android {
     namespace = "com.rattall.ntripanalyser"
     compileSdk = 35
