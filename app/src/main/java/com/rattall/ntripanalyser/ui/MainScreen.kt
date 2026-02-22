@@ -33,6 +33,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rattall.ntripanalyser.model.NtripProtocol
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -187,27 +190,18 @@ fun MainScreen(viewModel: MainViewModel) {
             }
 
             item {
-                Text("Recent RTCM Messages", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            }
-
-            items(ui.recentMessages.take(120)) { msg ->
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    tonalElevation = 2.dp,
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
+                SectionCard(title = "RTCM Message Types") {
+                    if (ui.messageSummaries.isEmpty()) {
                         Text(
-                            "Type ${msg.messageType} • Len ${msg.payloadLength} • CRC ${if (msg.crcValid) "OK" else "FAIL"}",
-                            fontWeight = FontWeight.SemiBold
+                            "No RTCM message types received yet.",
+                            style = MaterialTheme.typography.bodyMedium
                         )
-                        Text(
-                            msg.fields.entries.joinToString(" | ") { "${it.key}=${it.value}" },
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                    } else {
+                        MessageSummaryHeader()
+                        ui.messageSummaries.forEach { summary ->
+                            MessageSummaryRow(summary = summary)
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        }
                     }
                 }
             }
@@ -241,5 +235,37 @@ private fun StatRow(label: String, value: String) {
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium)
         Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun MessageSummaryHeader() {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Type", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+        Text("Last", modifier = Modifier.weight(2f), fontWeight = FontWeight.Bold)
+        Text("Size", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+        Text("Sats", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+        Text("Station", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+        Text("Count", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun MessageSummaryRow(summary: RtcmTypeSummary) {
+    val formatter = rememberTimeFormatter()
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(summary.messageType.toString(), modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+        Text(formatter.format(Date(summary.lastReceivedAtMs)), modifier = Modifier.weight(2f))
+        Text(summary.payloadLength.toString(), modifier = Modifier.weight(1f))
+        Text(summary.satelliteCount?.toString() ?: "-", modifier = Modifier.weight(1f))
+        Text(summary.stationId?.toString() ?: "-", modifier = Modifier.weight(1f))
+        Text(summary.count.toString(), modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun rememberTimeFormatter(): SimpleDateFormat {
+    return androidx.compose.runtime.remember {
+        SimpleDateFormat("HH:mm:ss", Locale.getDefault())
     }
 }

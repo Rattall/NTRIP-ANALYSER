@@ -19,6 +19,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+data class RtcmTypeSummary(
+    val messageType: Int,
+    val lastReceivedAtMs: Long,
+    val payloadLength: Int,
+    val satelliteCount: Int?,
+    val stationId: Int?,
+    val count: Long
+)
+
 data class MainUiState(
     val host: String = "",
     val port: String = "2101",
@@ -30,7 +39,8 @@ data class MainUiState(
     val sourceTable: List<SourceTableEntry> = emptyList(),
     val status: String = "Idle",
     val recentMessages: List<RtcmDecodedMessage> = emptyList(),
-    val connectionEvents: List<ConnectionEvent> = emptyList()
+    val connectionEvents: List<ConnectionEvent> = emptyList(),
+    val messageSummaries: List<RtcmTypeSummary> = emptyList()
 )
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
@@ -40,6 +50,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+    private val summaryByType = mutableMapOf<Int, RtcmTypeSummary>()
 
     val stats: StateFlow<StreamStats> = streamController.stats.stateIn(
         viewModelScope,
@@ -64,7 +75,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             streamController.messages.collect { decoded ->
                 val current = _uiState.value.recentMessages
                 val next = listOf(decoded) + current
-                _uiState.value = _uiState.value.copy(recentMessages = next.take(200))
+
+                val previous = summaryByType[decoded.messageType]
+                val updated = RtcmTypeSummary(
+                    messageType = decoded.messageType,
+                    lastReceivedAtMs = decoded.receivedAtMs,
+                    payloadLength = decoded.payloadLength,
+                    satelliteCount = extractSatelliteCount(decoded),
+                    stationId = extractStationId(decoded),
+                    count = (previous?.count ?: 0L) + 1
+                )
+                summaryByType[decoded.messageType] = updated
+
+                _uiState.value = _uiState.value.copy(
+                    recentMessages = next.take(200),
+                    messageSummaries = summaryByType.values.sortedBy { it.messageType }
+                )
             }
         }
 
@@ -173,5 +199,30 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun disconnect() {
         streamController.stop()
+    }
+
+    private fun extractStationId(message: RtcmDecodedMessage): Int? {
+        val raw = message.fields["stationId"] ?: return null
+        return when (raw) {
+            is Number -> raw.toInt()
+            is String -> raw.toIntOrNull()
+            else -> null
+        }
+    }
+
+    private fun extractSatelliteCount(message: RtcmDecodedMessage): Int? {
+        val directCount = message.fields["satelliteCount"]
+        if (directCount is Number) {
+            return directCount.toInt()
+        }
+        val satelliteIds = message.fields["satelliteIds"]
+        if (satelliteIds is List<*>) {
+            return satelliteIds.size
+        }
+        val satellites = message.fields["satellites"]
+        if (satellites is List<*>) {
+            return satellites.size
+        }
+        return null
     }
 }
