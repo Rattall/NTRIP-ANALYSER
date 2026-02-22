@@ -14,26 +14,17 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Divider
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenu
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rattall.ntripanalyser.model.NtripProtocol
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
@@ -69,31 +60,13 @@ fun MainScreen(viewModel: MainViewModel) {
                         Text("Use TLS")
                     }
 
-                    var expanded by remember { mutableStateOf(false) }
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = !expanded }
-                    ) {
-                        OutlinedTextField(
-                            value = ui.protocol.name,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Protocol") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth()
-                        )
-                        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                            NtripProtocol.entries.forEach { protocol ->
-                                DropdownMenuItem(
-                                    text = { Text(protocol.name) },
-                                    onClick = {
-                                        viewModel.setProtocol(protocol)
-                                        expanded = false
-                                    }
-                                )
-                            }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Protocol:")
+                        Button(onClick = { viewModel.setProtocol(NtripProtocol.REV1) }) {
+                            Text("REV1")
+                        }
+                        Button(onClick = { viewModel.setProtocol(NtripProtocol.REV2) }) {
+                            Text("REV2")
                         }
                     }
 
