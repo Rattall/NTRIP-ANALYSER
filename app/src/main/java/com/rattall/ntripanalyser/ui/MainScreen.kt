@@ -2,24 +2,31 @@ package com.rattall.ntripanalyser.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -30,117 +37,206 @@ fun MainScreen(viewModel: MainViewModel) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val stats by viewModel.stats.collectAsStateWithLifecycle()
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        item {
-            Text("NTRIP RTCM3 Analyser", style = MaterialTheme.typography.headlineSmall)
-            Text(ui.status, style = MaterialTheme.typography.bodyMedium)
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                        Text("NTRIP RTCM3 Analyser", style = MaterialTheme.typography.titleLarge)
+                        Text(ui.status, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            )
         }
-
-        item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = ui.host, onValueChange = viewModel::setHost, label = { Text("Host") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = ui.port, onValueChange = viewModel::setPort, label = { Text("Port") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = ui.username, onValueChange = viewModel::setUsername, label = { Text("Username") }, modifier = Modifier.fillMaxWidth())
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            item {
+                SectionCard(title = "Connection") {
+                    OutlinedTextField(
+                        value = ui.host,
+                        onValueChange = viewModel::setHost,
+                        label = { Text("Caster Host") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = ui.port,
+                        onValueChange = viewModel::setPort,
+                        label = { Text("Port") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = ui.username,
+                        onValueChange = viewModel::setUsername,
+                        label = { Text("Username") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
                     OutlinedTextField(
                         value = ui.password,
                         onValueChange = viewModel::setPassword,
                         label = { Text("Password") },
                         visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Text("Use TLS", style = MaterialTheme.typography.bodyMedium)
                         Checkbox(checked = ui.useTls, onCheckedChange = viewModel::setUseTls)
-                        Text("Use TLS")
                     }
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Protocol:")
-                        Button(onClick = { viewModel.setProtocol(NtripProtocol.REV1) }) {
-                            Text("REV1")
-                        }
-                        Button(onClick = { viewModel.setProtocol(NtripProtocol.REV2) }) {
-                            Text("REV2")
-                        }
+                        FilterChip(
+                            selected = ui.protocol == NtripProtocol.REV1,
+                            onClick = { viewModel.setProtocol(NtripProtocol.REV1) },
+                            label = { Text("NTRIP Rev1") }
+                        )
+                        FilterChip(
+                            selected = ui.protocol == NtripProtocol.REV2,
+                            onClick = { viewModel.setProtocol(NtripProtocol.REV2) },
+                            label = { Text("NTRIP Rev2") }
+                        )
                     }
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = viewModel::fetchSourceTable) { Text("Load Mountpoints") }
-                        Button(onClick = viewModel::connect) { Text("Connect") }
-                        Button(onClick = viewModel::disconnect) { Text("Stop") }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(modifier = Modifier.weight(1f), onClick = viewModel::fetchSourceTable) {
+                            Text("Load Mountpoints")
+                        }
+                        Button(modifier = Modifier.weight(1f), onClick = viewModel::connect) {
+                            Text("Connect")
+                        }
+                        Button(modifier = Modifier.weight(1f), onClick = viewModel::disconnect) {
+                            Text("Stop")
+                        }
                     }
                 }
             }
-        }
 
-        item {
             if (ui.sourceTable.isNotEmpty()) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text("Mountpoints", style = MaterialTheme.typography.titleMedium)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        ui.sourceTable.take(25).forEach { entry ->
+                item {
+                    SectionCard(title = "Mountpoints") {
+                        Text(
+                            "Selected: ${ui.mountpoint.ifBlank { "(none)" }}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        ui.sourceTable.take(20).forEach { entry ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                             ) {
-                                Text(entry.mountpoint)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(entry.mountpoint, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        "${entry.format} • ${entry.navSystem}",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Button(onClick = { viewModel.selectMountpoint(entry.mountpoint) }) {
                                     Text("Select")
                                 }
                             }
-                            Divider()
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
                         }
                     }
                 }
             }
-        }
 
-        item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Live Stats", style = MaterialTheme.typography.titleMedium)
-                    Text("Connected: ${stats.connected}")
-                    Text("Bytes/s: ${"%.1f".format(stats.bytesPerSecond)} | Total: ${stats.totalBytes}")
-                    Text("Msgs/s: ${"%.1f".format(stats.messagesPerSecond)} | Total: ${stats.totalMessages}")
-                    Text("CRC Failures: ${stats.crcFailures}")
-                    Text("Malformed Frames: ${stats.malformedFrames}")
-                    Text("Uptime: ${stats.sessionUptimeMs / 1000}s")
-                    Text("Selected mountpoint: ${ui.mountpoint.ifBlank { "(none)" }}")
+            item {
+                SectionCard(title = "Live Stats") {
+                    StatRow("Connected", if (stats.connected) "Yes" else "No")
+                    StatRow("Bytes / sec", "${"%.1f".format(stats.bytesPerSecond)}")
+                    StatRow("Total Bytes", "${stats.totalBytes}")
+                    StatRow("Messages / sec", "${"%.1f".format(stats.messagesPerSecond)}")
+                    StatRow("Total Messages", "${stats.totalMessages}")
+                    StatRow("CRC Failures", "${stats.crcFailures}")
+                    StatRow("Malformed Frames", "${stats.malformedFrames}")
+                    StatRow("Reconnect Attempts", "${stats.reconnectAttempts}")
+                    StatRow("Uptime", "${stats.sessionUptimeMs / 1000}s")
                 }
             }
-        }
 
-        item {
             if (ui.connectionEvents.isNotEmpty()) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Connection Events", style = MaterialTheme.typography.titleMedium)
+                item {
+                    SectionCard(title = "Connection Events") {
                         ui.connectionEvents.take(10).forEach { event ->
-                            Text(event.message)
+                            Text(event.message, style = MaterialTheme.typography.bodyMedium)
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         }
                     }
                 }
             }
-        }
 
-        item {
-            Text("Recent RTCM Messages", style = MaterialTheme.typography.titleMedium)
-        }
+            item {
+                Text("Recent RTCM Messages", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            }
 
-        items(ui.recentMessages) { msg ->
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Type ${msg.messageType} | Len ${msg.payloadLength} | CRC ${msg.crcValid}")
-                    Text(msg.fields.entries.joinToString(" | ") { "${it.key}=${it.value}" })
+            items(ui.recentMessages.take(120)) { msg ->
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    tonalElevation = 2.dp,
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            "Type ${msg.messageType} • Len ${msg.payloadLength} • CRC ${if (msg.crcValid) "OK" else "FAIL"}",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            msg.fields.entries.joinToString(" | ") { "${it.key}=${it.value}" },
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SectionCard(
+    title: String,
+    content: @Composable Column.() -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            content = {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                content()
+            }
+        )
+    }
+}
+
+@Composable
+private fun StatRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
     }
 }
