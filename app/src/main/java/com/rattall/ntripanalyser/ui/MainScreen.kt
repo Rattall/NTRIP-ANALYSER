@@ -1,5 +1,6 @@
 package com.rattall.ntripanalyser.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -27,6 +28,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -42,6 +45,7 @@ import java.util.Locale
 fun MainScreen(viewModel: MainViewModel) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val stats by viewModel.stats.collectAsStateWithLifecycle()
+    val expandedByType = remember { mutableStateMapOf<Int, Boolean>() }
 
     Scaffold(
         topBar = {
@@ -199,7 +203,17 @@ fun MainScreen(viewModel: MainViewModel) {
                     } else {
                         MessageSummaryHeader()
                         ui.messageSummaries.forEach { summary ->
-                            MessageSummaryRow(summary = summary)
+                            val expanded = expandedByType[summary.messageType] == true
+                            MessageSummaryRow(
+                                summary = summary,
+                                expanded = expanded,
+                                onToggle = {
+                                    expandedByType[summary.messageType] = !expanded
+                                }
+                            )
+                            if (expanded) {
+                                MessageDetailBlock(summary = summary)
+                            }
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         }
                     }
@@ -251,15 +265,60 @@ private fun MessageSummaryHeader() {
 }
 
 @Composable
-private fun MessageSummaryRow(summary: RtcmTypeSummary) {
-    val formatter = rememberTimeFormatter()
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(summary.messageType.toString(), modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-        Text(formatter.format(Date(summary.lastReceivedAtMs)), modifier = Modifier.weight(2f))
-        Text(summary.payloadLength.toString(), modifier = Modifier.weight(1f))
-        Text(summary.satelliteCount?.toString() ?: "-", modifier = Modifier.weight(1f))
-        Text(summary.stationId?.toString() ?: "-", modifier = Modifier.weight(1f))
-        Text(summary.count.toString(), modifier = Modifier.weight(1f))
+private fun MessageSummaryRow(
+    summary: RtcmTypeSummary,
+    expanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle),
+        tonalElevation = if (expanded) 2.dp else 0.dp,
+        shape = MaterialTheme.shapes.small
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(summary.messageType.toString(), modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+            Text(rememberTimeFormatter().format(Date(summary.lastReceivedAtMs)), modifier = Modifier.weight(2f))
+            Text(summary.payloadLength.toString(), modifier = Modifier.weight(1f))
+            Text(summary.satelliteCount?.toString() ?: "-", modifier = Modifier.weight(1f))
+            Text(summary.stationId?.toString() ?: "-", modifier = Modifier.weight(1f))
+            Text(summary.count.toString(), modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun MessageDetailBlock(summary: RtcmTypeSummary) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        summary.lastFields
+            .toSortedMap()
+            .forEach { (key, value) ->
+                val rendered = renderFieldValue(value)
+                Text("$key: $rendered", style = MaterialTheme.typography.bodySmall)
+            }
+    }
+}
+
+private fun renderFieldValue(value: Any?): String {
+    return when (value) {
+        null -> "null"
+        is List<*> -> {
+            val preview = value.take(2).joinToString { it.toString() }
+            "list(size=${value.size}) $preview${if (value.size > 2) " ..." else ""}"
+        }
+        is Map<*, *> -> "map(size=${value.size})"
+        else -> value.toString()
     }
 }
 

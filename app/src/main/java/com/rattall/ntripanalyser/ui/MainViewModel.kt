@@ -25,7 +25,8 @@ data class RtcmTypeSummary(
     val payloadLength: Int,
     val satelliteCount: Int?,
     val stationId: Int?,
-    val count: Long
+    val count: Long,
+    val lastFields: Map<String, Any?>
 )
 
 data class MainUiState(
@@ -83,7 +84,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     payloadLength = decoded.payloadLength,
                     satelliteCount = extractSatelliteCount(decoded),
                     stationId = extractStationId(decoded),
-                    count = (previous?.count ?: 0L) + 1
+                    count = (previous?.count ?: 0L) + 1,
+                    lastFields = decoded.fields
                 )
                 summaryByType[decoded.messageType] = updated
 
