@@ -314,8 +314,20 @@ private fun renderFieldValue(value: Any?): String {
     return when (value) {
         null -> "null"
         is List<*> -> {
-            val preview = value.take(2).joinToString { it.toString() }
-            "list(size=${value.size}) $preview${if (value.size > 2) " ..." else ""}"
+            val scalarList = value.all { it == null || it is Number || it is String || it is Boolean }
+            if (scalarList) {
+                val limit = 32
+                val preview = value.take(limit).joinToString(", ") { it?.toString() ?: "null" }
+                if (value.size <= limit) {
+                    "[$preview]"
+                } else {
+                    "[$preview, ...] (showing $limit of ${value.size})"
+                }
+            } else {
+                val previewCount = 3
+                val preview = value.take(previewCount).joinToString { it.toString() }
+                "list(size=${value.size}) preview($previewCount): $preview${if (value.size > previewCount) " ..." else ""}"
+            }
         }
         is Map<*, *> -> "map(size=${value.size})"
         else -> value.toString()
