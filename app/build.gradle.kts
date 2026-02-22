@@ -4,11 +4,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-configurations.maybeCreate("debugRuntimeClasspathCopy").apply {
-    isCanBeResolved = true
-    isCanBeConsumed = false
-}
-
 android {
     namespace = "com.rattall.ntripanalyser"
     compileSdk = 35
@@ -47,13 +42,13 @@ android {
     }
 }
 
-afterEvaluate {
-    configurations
-        .matching { it.name.endsWith("RuntimeClasspathCopy") }
-        .all {
-            isCanBeConsumed = false
-            isCanBeResolved = true
-        }
+configurations.configureEach {
+    if (name == "debugRuntimeClasspathCopy") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+        @Suppress("UnstableApiUsage")
+        isCanBeDeclared = false
+    }
 }
 
 dependencies {
