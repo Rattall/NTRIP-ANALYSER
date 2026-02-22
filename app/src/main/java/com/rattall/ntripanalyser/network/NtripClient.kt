@@ -51,18 +51,21 @@ class NtripClient(
         val socket = createSocket(host = config.host, port = config.port, useTls = config.useTls)
         val output = socket.getOutputStream()
         val auth = basicAuth(username = config.username, password = config.password)
+        val mountpoint = config.mountpoint.trim().trimStart('/')
         val ntripVersionLine = if (config.protocol == NtripProtocol.REV2) {
             "Ntrip-Version: Ntrip/2.0\r\n"
         } else {
             ""
         }
+        val httpVersion = if (config.protocol == NtripProtocol.REV2) "HTTP/1.1" else "HTTP/1.0"
 
         val request = buildString {
-            append("GET /${config.mountpoint} HTTP/1.1\r\n")
+            append("GET /$mountpoint $httpVersion\r\n")
             append("Host: ${config.host}\r\n")
             append("User-Agent: NTRIP NTRIP-ANALYSER/0.1\r\n")
             append(ntripVersionLine)
             append("Authorization: Basic $auth\r\n")
+            append("Accept: */*\r\n")
             append("Connection: keep-alive\r\n\r\n")
         }
         output.write(request.toByteArray())

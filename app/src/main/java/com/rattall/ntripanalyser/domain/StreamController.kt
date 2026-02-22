@@ -109,11 +109,16 @@ class StreamController(
                                 val elapsed = (now - windowStart).coerceAtLeast(1)
                                 val bps = (windowBytes * 1000.0) / elapsed
                                 val mps = (windowMessages * 1000.0) / elapsed
+                                val status = if (totalBytes > 0 && totalMessages == 0L) {
+                                    "Connected: no RTCM frames yet (check mountpoint/GGA requirement)"
+                                } else {
+                                    "Streaming"
+                                }
 
                                 withContext(Dispatchers.Main) {
                                     _stats.value = _stats.value.copy(
                                         connected = true,
-                                        statusMessage = "Streaming",
+                                        statusMessage = status,
                                         totalBytes = totalBytes,
                                         bytesPerSecond = bps,
                                         totalMessages = totalMessages,

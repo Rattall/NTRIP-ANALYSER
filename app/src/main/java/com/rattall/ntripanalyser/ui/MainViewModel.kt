@@ -138,12 +138,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun connect() {
         val state = _uiState.value
+        if (state.host.isBlank()) {
+            _uiState.value = state.copy(status = "Host is required")
+            return
+        }
+
+        val effectiveMountpoint = when {
+            state.mountpoint.isNotBlank() -> state.mountpoint
+            state.sourceTable.isNotEmpty() -> state.sourceTable.first().mountpoint
+            else -> ""
+        }
+
+        if (effectiveMountpoint.isBlank()) {
+            _uiState.value = state.copy(status = "Select a mountpoint before connecting")
+            return
+        }
+
+        if (effectiveMountpoint != state.mountpoint) {
+            _uiState.value = state.copy(mountpoint = effectiveMountpoint)
+        }
+
         val cfg = NtripConfig(
             host = state.host,
             port = state.port.toIntOrNull() ?: 2101,
             username = state.username,
             password = state.password,
-            mountpoint = state.mountpoint,
+            mountpoint = effectiveMountpoint,
             useTls = state.useTls,
             protocol = state.protocol
         )
