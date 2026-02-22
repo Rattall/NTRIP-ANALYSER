@@ -314,22 +314,52 @@ private fun renderFieldValue(value: Any?): String {
     return when (value) {
         null -> "null"
         is List<*> -> {
-            val scalarList = value.all { it == null || it is Number || it is String || it is Boolean }
-            if (scalarList) {
-                val limit = 32
-                val preview = value.take(limit).joinToString(", ") { it?.toString() ?: "null" }
-                if (value.size <= limit) {
-                    "[$preview]"
-                } else {
-                    "[$preview, ...] (showing $limit of ${value.size})"
-                }
+            if (value.isEmpty()) {
+                "[]"
             } else {
-                val previewCount = 3
-                val preview = value.take(previewCount).joinToString { it.toString() }
-                "list(size=${value.size}) preview($previewCount): $preview${if (value.size > previewCount) " ..." else ""}"
+                buildString {
+                    append("list(size=${value.size})")
+                    value.forEachIndexed { index, item ->
+                        append("\n  [")
+                        append(index)
+                        append("] ")
+                        append(renderNestedValue(item))
+                    }
+                }
             }
         }
-        is Map<*, *> -> "map(size=${value.size})"
+        is Map<*, *> -> {
+            if (value.isEmpty()) {
+                "{}"
+            } else {
+                buildString {
+                    append("map(size=${value.size})")
+                    value.entries
+                        .sortedBy { it.key?.toString().orEmpty() }
+                        .forEach { (key, item) ->
+                            append("\n  ")
+                            append(key)
+                            append("=")
+                            append(renderNestedValue(item))
+                        }
+                }
+            }
+        }
+        else -> value.toString()
+    }
+}
+
+private fun renderNestedValue(value: Any?): String {
+    return when (value) {
+        null -> "null"
+        is List<*> -> {
+            if (value.isEmpty()) "[]" else "[${value.joinToString(", ") { renderNestedValue(it) }}]"
+        }
+        is Map<*, *> -> {
+            if (value.isEmpty()) "{}" else value.entries
+                .sortedBy { it.key?.toString().orEmpty() }
+                .joinToString(prefix = "{", postfix = "}") { (k, v) -> "${k}=${renderNestedValue(v)}" }
+        }
         else -> value.toString()
     }
 }
